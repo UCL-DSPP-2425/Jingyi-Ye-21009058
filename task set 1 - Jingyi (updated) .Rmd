@@ -1,0 +1,98 @@
+---
+title: "Task set 1"
+output:
+  pdf_document: default
+  word_document: default
+date: "2024-11-05"
+---
+Task set 1
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+(a)
+```{r}
+brexit_data <- read.csv("/Users/yejingyi/Downloads/brexit.csv")
+str(brexit_data)
+```
+```{r}
+leave_majority <- brexit_data %>% filter(pct_leave > pct_remain)
+leave_count <- nrow(leave_majority)
+print(paste("Number of districts with majority leave vote:", leave_count))
+```
+
+263 districts had a majority leave vote
+
+```{r}
+max_leave_district <- brexit_data[which.max(brexit_data$pct_leave), ]
+print(max_leave_district)
+```
+The district with the highest leave vote percentage is Boston
+
+```{r}
+avg_leave <- mean(brexit_data$pct_leave, na.rm = TRUE)
+print(paste("Average leave vote share across districts:", round(avg_leave, 2)))
+```
+```{r}
+total_leave_votes <- sum(brexit_data$leave, na.rm = TRUE)
+total_valid_votes <- sum(brexit_data$valid_votes, na.rm = TRUE)
+national_leave_share <- (total_leave_votes / total_valid_votes) * 100
+cat("National vote share for leave:", round(national_leave_share, 2), "%\n")
+```
+
+(b)
+
+```{r}
+ggplot(brexit_data, aes(x = pct_leave75, y = pct_leave)) +
+  geom_point() +
+  labs(x = "Leave Vote Share in 1975 (%)", y = "Leave Vote Share in 2016 (%)") +
+  ggtitle("Leave Vote Share: 2016 vs 1975") +
+  theme_minimal()
+```
+```{r}
+model <- lm(pct_leave ~ pct_leave75, data = brexit_data)
+summary(model)
+```
+```{r}
+brexit_data_clean <- na.omit(brexit_data %>% select(pct_leave75, pct_leave))
+model <- lm(pct_leave ~ pct_leave75, data = brexit_data_clean)
+brexit_data_clean$residuals <- residuals(model)
+ggplot(brexit_data_clean, aes(x = pct_leave75, y = pct_leave)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(x = "Leave Vote Share in 1975 (%)", y = "Leave Vote Share in 2016 (%)") +
+  ggtitle("Scatter Plot with Regression Line") +
+  theme_minimal()
+ggplot(brexit_data_clean, aes(x = pct_leave75, y = residuals)) +
+  geom_point() +
+  labs(x = "Leave Vote Share in 1975 (%)", y = "Residuals") +
+  ggtitle("Residual Plot") +
+  theme_minimal()
+```
+The reason why the residuals are scattered may because we are lacking some
+important factors in the model. In this model, we only have pct_leave75 in the 
+linear regression as a factor, but tehre may have  many other factors influenced
+the Brexit vote in 2016.
+
+(c)
+```{r}
+library(boot)
+
+boot_fn <- function(data, index) {
+  coef(lm(pct_leave ~ pct_leave75, data = data, subset = index))[2]
+}
+
+set.seed(42)
+boot_results <- boot(brexit_data, boot_fn, R = 1000)
+print(boot_results)
+
+```
+Because they have different ways fo calculating standard error. The OLS model
+standard error is calculated based on the linear regression assumption
+(independence, homoscedasticity, and normality), while bootstrap measures 
+standard error by resampling,it obtain distinct datasets by repeatedly 
+sampling observations from the original dataset with replacement and then 
+obtain new dataset of the same size as original dataset. Bootstrap does not
+rely on assumptions. 
